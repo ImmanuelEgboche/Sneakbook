@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
 
-const User = require('../models/models')
+const User = require('../models/users')
 
 
 router.post('/register', async (req, res) => {
@@ -21,7 +21,27 @@ router.post('/register', async (req, res) => {
     }
 })
 
-// router.post("/login", async (req, res) => {
-//     try{
-        
-// })
+router.post("/login", async (req, res) => {
+    try{
+        const user = await User.findByEmail(req.body.email)
+        if(!user){ throw new Error('No user with this email')}
+        const authed = bcrypt.compare(req.body.password, User.password)
+        if(!!authed){
+            const payload = {username: user.name, email: user.email}
+            const sendToken = (err, token) => {
+                if(err){throw new Error("Error in token generation")}
+                res.status(200).json({
+                    success: true,
+                    token: "Bearer " + token,
+                });
+            }
+            jwt.sign(payload, process.env.SECRET, { expiresIn: 60 }, sendToken)
+        } else{
+            throw new Error('User could not be authenticated') 
+        }
+    }catch(err){
+        console.log(err);
+        res.status(401).json({err});
+    }})
+
+module.exports = router 
